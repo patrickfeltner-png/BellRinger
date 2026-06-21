@@ -8,7 +8,7 @@
     { "src": "*.png", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
     { "src": "/app.js", "dest": "/app.js" },
     { "src": "/styles.css", "dest": "/styles.css" },
     { "src": "/(.*\\.png)", "dest": "/$1" },
