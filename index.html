@@ -21,11 +21,11 @@
           <h2 id="signin-title">Sign in</h2>
           <label>
             School email
-            <input id="emailInput" type="email" value="ms.hart@fayette.kyschools.us" autocomplete="email">
+            <input id="emailInput" type="email" value="patrick.feltner@knott.kyschools.us" autocomplete="email">
           </label>
           <label id="passwordField">
             Teacher password
-            <input id="passwordInput" type="password" value="BellRinger2026!" autocomplete="current-password">
+            <input id="passwordInput" type="password" value="" autocomplete="current-password">
           </label>
           <div class="role-toggle" role="group" aria-label="Role">
             <button class="segmented is-active" data-role="teacher">Teacher</button>
@@ -79,6 +79,16 @@
               </label>
               <button class="secondary-button" type="submit">Save page</button>
             </form>
+
+            <section class="panel approval-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Teacher approvals</h3>
+                  <p>New teacher accounts require your approval.</p>
+                </div>
+              </div>
+              <div id="approvalList" class="approval-list"></div>
+            </section>
 
             <section class="panel standards-panel">
               <div class="panel-heading">

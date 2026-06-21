@@ -18,6 +18,8 @@ const state = {
   generatedDrafts: {},
   ringers: {},
   submissions: [],
+  approvedTeachers: ["patrick.feltner@knott.kyschools.us"],
+  pendingTeacherApprovals: [],
   students: [
     { name: "Avery Johnson", email: "avery.johnson@stu.fayette.kyschools.us" },
     { name: "Maya Chen", email: "maya.chen@stu.fayette.kyschools.us" },
@@ -26,6 +28,7 @@ const state = {
 };
 
 const teacherCredentials = {
+  "patrick.feltner@knott.kyschools.us": "Smackdown!19",
   "ms.hart@fayette.kyschools.us": "BellRinger2026!",
   "teacher@school.edu": "BellRinger2026!"
 };
@@ -74,6 +77,7 @@ function cacheElements() {
   [
     "emailInput", "passwordField", "passwordInput", "signInButton", "signinMessage", "activeUser", "activeRole", "todayPill", "pageTitle",
     "pageForm", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsList",
+    "approvalList",
     "ringerForm", "dateStart", "dateEnd", "dokSelect", "questionType", "questionText", "generateButton",
     "teacherMessage", "prevMonthButton", "nextMonthButton", "calendarMonthLabel", "teacherCalendar",
     "selectedStandardsList", "selectedDatesList", "studentDate", "calendarSummary", "assignmentMeta",
@@ -105,6 +109,10 @@ function migrateState() {
   state.selectedDates = unique(state.selectedDates).filter((date) => date <= isoToday && isSchoolDay(date)).sort();
   if (!state.selectedDates.length) state.selectedDates = [isoToday];
   if (!state.generatedDrafts) state.generatedDrafts = {};
+  if (!Array.isArray(state.approvedTeachers)) state.approvedTeachers = ["patrick.feltner@knott.kyschools.us"];
+  if (!Array.isArray(state.pendingTeacherApprovals)) state.pendingTeacherApprovals = [];
+  delete state.approvedStudents;
+  delete state.pendingApprovals;
   if (!state.calendarMonth) state.calendarMonth = state.selectedDates[0].slice(0, 7);
   if (!["5", "6", "7", "8"].includes(state.page.grade)) state.page.grade = "6";
   state.teacherAuthenticated = false;
@@ -239,6 +247,7 @@ function renderAll() {
   els.gradebookDate.value ||= isoToday;
 
   renderStandards();
+  renderApprovals();
   renderTeacherCalendar();
   renderSelectedSummaries();
   renderDraftPreview();
@@ -274,6 +283,16 @@ function signIn() {
     return;
   }
 
+  if (state.role === "teacher" && !state.approvedTeachers.includes(email)) {
+    requestTeacherApproval(email);
+    state.email = "";
+    state.teacherAuthenticated = false;
+    setMessage(els.signinMessage, "Teacher account request sent for approval.", "teacher-ok");
+    persist();
+    renderAll();
+    return;
+  }
+
   if (state.role === "teacher" && !isValidTeacherLogin(email, els.passwordInput.value)) {
     state.email = "";
     state.teacherAuthenticated = false;
@@ -284,8 +303,11 @@ function signIn() {
 
   state.email = email;
   state.teacherAuthenticated = state.role === "teacher";
-  if (state.role === "student" && !state.students.some((student) => student.email === email)) {
-    state.students.push({ name: nameFromEmail(email), email });
+
+  if (state.role === "student") {
+    if (!state.students.some((student) => student.email === email)) {
+      state.students.push({ name: nameFromEmail(email), email });
+    }
   }
 
   setMessage(els.signinMessage, `Welcome, ${nameFromEmail(email)}.`, "teacher-ok");
@@ -314,6 +336,50 @@ function renderStandards() {
     button.addEventListener("click", () => toggleStandard(button.dataset.standard));
   });
   renderSelectedSummaries();
+}
+
+function renderApprovals() {
+  if (!els.approvalList) return;
+
+  if (!state.pendingTeacherApprovals.length) {
+    els.approvalList.innerHTML = `<p class="empty-note">No pending teacher account requests.</p>`;
+    return;
+  }
+
+  els.approvalList.innerHTML = state.pendingTeacherApprovals.map((request) => `
+    <div class="approval-row">
+      <div>
+        <strong>${nameFromEmail(request.email)}</strong>
+        <span>${request.email}</span>
+      </div>
+      <button class="secondary-button" type="button" data-approve-teacher="${request.email}">Approve</button>
+    </div>
+  `).join("");
+
+  els.approvalList.querySelectorAll("[data-approve-teacher]").forEach((button) => {
+    button.addEventListener("click", () => approveTeacher(button.dataset.approveTeacher));
+  });
+}
+
+function requestTeacherApproval(email) {
+  if (state.pendingTeacherApprovals.some((request) => request.email === email)) return;
+  state.pendingTeacherApprovals.push({
+    email,
+    requestedAt: new Date().toISOString()
+  });
+}
+
+function approveTeacher(email) {
+  if (!requireTeacherAccess()) return;
+  if (state.email !== "patrick.feltner@knott.kyschools.us") {
+    setMessage(els.teacherMessage, "Only Patrick Feltner can approve teacher accounts.", "teacher-error");
+    return;
+  }
+  if (!state.approvedTeachers.includes(email)) state.approvedTeachers.push(email);
+  state.pendingTeacherApprovals = state.pendingTeacherApprovals.filter((request) => request.email !== email);
+  persist();
+  renderApprovals();
+  setMessage(els.teacherMessage, `${email} is approved as a teacher.`, "teacher-ok");
 }
 
 function filteredStandards() {

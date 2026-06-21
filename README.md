@@ -5,7 +5,7 @@ BellRinger is a classroom bell-ringer app with teacher scheduling, student respo
 ## What is included
 
 - Teacher sign-in with school email validation
-- Teacher password check to protect teacher tools and gradebook access
+- Teacher password check plus owner approval for new teacher accounts
 - Teacher-created class page with a join code
 - Kentucky standards picker for grades 5-8 with subject, grade, search, and multi-select filters
 - Teacher calendar for selecting one school day, a range, or multiple individual dates

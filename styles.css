@@ -436,6 +436,33 @@ main {
   min-height: 36px;
 }
 
+.approval-list {
+  display: grid;
+  gap: 10px;
+}
+
+.approval-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfc;
+}
+
+.approval-row div {
+  display: grid;
+  gap: 3px;
+}
+
+.approval-row span,
+.empty-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .selection-chip {
   border-radius: 999px;
   padding: 7px 10px;
