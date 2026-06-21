@@ -1,0 +1,14 @@
+{
+  "name": "bellringer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BellRinger classroom bell-ringer app with OpenAI-backed generation and grading.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node --check app.js && node --check server.js && node --check lib/openai-service.js && node --check api/bellringers/generate.js && node --check api/submissions/grade.js && node --check api/health.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

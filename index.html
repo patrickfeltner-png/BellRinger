@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BellRinger</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">BR</div>
+          <div>
+            <h1>BellRinger</h1>
+            <p>Daily starts, scored clearly.</p>
+          </div>
+        </div>
+
+        <section class="signin-panel" aria-labelledby="signin-title">
+          <h2 id="signin-title">Sign in</h2>
+          <label>
+            School email
+            <input id="emailInput" type="email" value="ms.hart@fayette.kyschools.us" autocomplete="email">
+          </label>
+          <label id="passwordField">
+            Teacher password
+            <input id="passwordInput" type="password" value="BellRinger2026!" autocomplete="current-password">
+          </label>
+          <div class="role-toggle" role="group" aria-label="Role">
+            <button class="segmented is-active" data-role="teacher">Teacher</button>
+            <button class="segmented" data-role="student">Student</button>
+          </div>
+          <button id="signInButton" class="primary-button">Enter BellRinger</button>
+          <p id="signinMessage" class="form-note" aria-live="polite"></p>
+        </section>
+
+        <nav class="nav-tabs" aria-label="Main sections">
+          <button class="nav-tab is-active" data-view="teacher">Teacher Studio</button>
+          <button class="nav-tab" data-view="student">Student Bell</button>
+          <button class="nav-tab" data-view="gradebook">Gradebook</button>
+        </nav>
+
+        <section class="student-total">
+          <span>Signed in as</span>
+          <strong id="activeUser">Not signed in</strong>
+          <span id="activeRole">Choose a role to begin</span>
+        </section>
+      </aside>
+
+      <main>
+        <section class="top-strip">
+          <div>
+            <p class="eyebrow">Kentucky standards aligned</p>
+            <h2 id="pageTitle">Teacher Studio</h2>
+          </div>
+          <div class="date-pill" id="todayPill"></div>
+        </section>
+
+        <section id="teacherView" class="view-panel is-visible" aria-labelledby="teacher-heading">
+          <div class="workspace-grid">
+            <form id="pageForm" class="panel compact-panel">
+              <h3 id="teacher-heading">Class page</h3>
+              <label>
+                Page name
+                <input id="pageName" type="text" value="6th Grade ELA - Homeroom">
+              </label>
+              <label>
+                Join code
+                <input id="joinCode" type="text" value="HART-ELA6">
+              </label>
+              <label>
+                Subject
+                <select id="subjectSelect"></select>
+              </label>
+              <label>
+                Grade
+                <select id="gradeSelect"></select>
+              </label>
+              <button class="secondary-button" type="submit">Save page</button>
+            </form>
+
+            <section class="panel standards-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Kentucky standards</h3>
+                  <p>Select one or more standards for ChatGPT to use.</p>
+                </div>
+                <input id="standardSearch" class="search-input" type="search" placeholder="Search standards">
+              </div>
+              <div id="standardsList" class="standards-list" aria-live="polite"></div>
+            </section>
+
+            <form id="ringerForm" class="panel ringer-builder">
+              <div class="panel-heading">
+                <div>
+                  <h3>Bell ringer calendar</h3>
+                  <p>Choose the school days to create bell ringers for.</p>
+                </div>
+              </div>
+
+              <div class="builder-row">
+                <label>
+                  DOK
+                  <select id="dokSelect">
+                    <option value="1">DOK 1 - Recall</option>
+                    <option value="2">DOK 2 - Skill / Concept</option>
+                    <option value="3">DOK 3 - Strategic Thinking</option>
+                    <option value="4">DOK 4 - Extended Thinking</option>
+                  </select>
+                </label>
+                <label>
+                  Question type
+                  <select id="questionType">
+                    <option>KSA-style reading response</option>
+                    <option>KSA-style math problem</option>
+                    <option>KSA-style science investigation</option>
+                    <option>Source-based social studies prompt</option>
+                    <option>Teacher choice</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="builder-row">
+                <label>
+                  Start date
+                  <input id="dateStart" type="date">
+                </label>
+                <label>
+                  End date
+                  <input id="dateEnd" type="date">
+                </label>
+              </div>
+
+              <div class="calendar-builder" aria-label="Bell ringer date picker">
+                <div class="calendar-builder-header">
+                  <button id="prevMonthButton" class="icon-button" type="button" aria-label="Previous month">&lt;</button>
+                  <strong id="calendarMonthLabel"></strong>
+                  <button id="nextMonthButton" class="icon-button" type="button" aria-label="Next month">&gt;</button>
+                </div>
+                <div class="calendar-weekdays" aria-hidden="true">
+                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span>
+                </div>
+                <div id="teacherCalendar" class="teacher-calendar"></div>
+              </div>
+
+              <div>
+                <h4>Selected standards</h4>
+                <div id="selectedStandardsList" class="selected-list"></div>
+              </div>
+
+              <div>
+                <h4>Selected dates</h4>
+                <div id="selectedDatesList" class="selected-list"></div>
+              </div>
+
+              <label>
+                Bell ringer preview
+                <textarea id="questionText" rows="8" placeholder="Write your own prompt, or generate KSA-style bell ringers for the selected dates."></textarea>
+              </label>
+
+              <div class="button-row">
+                <button id="generateButton" class="secondary-button" type="button">Generate selected dates</button>
+                <button class="primary-button" type="submit">Publish selected dates</button>
+              </div>
+              <p id="teacherMessage" class="form-note" aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
+
+        <section id="studentView" class="view-panel" aria-labelledby="student-heading">
+          <div class="student-layout">
+            <section class="panel calendar-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3 id="student-heading">Choose a day</h3>
+                  <p>Future dates stay locked.</p>
+                </div>
+                <input id="studentDate" type="date">
+              </div>
+              <div class="calendar-summary" id="calendarSummary"></div>
+            </section>
+
+            <form id="answerForm" class="panel answer-panel">
+              <div class="assignment-meta" id="assignmentMeta"></div>
+              <h3 id="studentQuestion">No bell ringer selected yet.</h3>
+              <label>
+                Your answer
+                <textarea id="studentAnswer" rows="7" placeholder="Type your response here."></textarea>
+              </label>
+              <button class="primary-button" type="submit">Submit for grading</button>
+              <div id="studentFeedback" class="feedback-box" aria-live="polite"></div>
+            </form>
+          </div>
+        </section>
+
+        <section id="gradebookView" class="view-panel" aria-labelledby="gradebook-heading">
+          <section class="panel">
+            <div class="panel-heading gradebook-heading">
+              <div>
+                <h3 id="gradebook-heading">Gradebook</h3>
+                <p>Daily scores plus weekly and monthly totals.</p>
+              </div>
+              <div class="gradebook-controls">
+                <label>
+                  View
+                  <select id="gradebookRange">
+                    <option value="day">Day</option>
+                    <option value="week">Week</option>
+                    <option value="month">Month</option>
+                  </select>
+                </label>
+                <label>
+                  Anchor date
+                  <input id="gradebookDate" type="date">
+                </label>
+              </div>
+            </div>
+            <div id="gradebookStats" class="stats-grid"></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Email</th>
+                    <th>Submissions</th>
+                    <th>Total</th>
+                    <th>Average</th>
+                    <th>Latest feedback</th>
+                  </tr>
+                </thead>
+                <tbody id="gradebookBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
