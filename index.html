@@ -70,7 +70,7 @@
                 <input id="joinCode" type="text" value="HART-ELA6">
               </label>
               <label>
-                Subject
+                Teaching topic / subject
                 <select id="subjectSelect"></select>
               </label>
               <label>
@@ -104,8 +104,8 @@
             <form id="ringerForm" class="panel ringer-builder">
               <div class="panel-heading">
                 <div>
-                  <h3>Bell ringer calendar</h3>
-                  <p>Choose the school days to create bell ringers for.</p>
+                  <h3>Bell ringer hub</h3>
+                  <p>Choose dates, question type, standards, and what the bell ringers should be about.</p>
                 </div>
               </div>
 
@@ -122,14 +122,24 @@
                 <label>
                   Question type
                   <select id="questionType">
-                    <option>KSA-style reading response</option>
-                    <option>KSA-style math problem</option>
-                    <option>KSA-style science investigation</option>
-                    <option>Source-based social studies prompt</option>
+                    <option>Short answer</option>
+                    <option>Multiple choice</option>
+                    <option>Multiple select</option>
+                    <option>Drag and drop</option>
+                    <option>Evidence-based selected response</option>
+                    <option>Constructed response</option>
+                    <option>Math problem</option>
+                    <option>Science investigation</option>
+                    <option>Source-based prompt</option>
                     <option>Teacher choice</option>
                   </select>
                 </label>
               </div>
+
+              <label>
+                Bell ringer topic or teacher prompt
+                <textarea id="teacherPrompt" rows="4" placeholder="Example: comparing theme and central idea using a short passage about teamwork. Include any vocabulary, unit topic, or question style you want ChatGPT to use."></textarea>
+              </label>
 
               <div class="builder-row">
                 <label>

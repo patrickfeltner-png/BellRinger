@@ -78,7 +78,7 @@ function cacheElements() {
     "emailInput", "passwordField", "passwordInput", "signInButton", "signinMessage", "activeUser", "activeRole", "todayPill", "pageTitle",
     "pageForm", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsList",
     "approvalList",
-    "ringerForm", "dateStart", "dateEnd", "dokSelect", "questionType", "questionText", "generateButton",
+    "ringerForm", "dateStart", "dateEnd", "dokSelect", "questionType", "teacherPrompt", "questionText", "generateButton",
     "teacherMessage", "prevMonthButton", "nextMonthButton", "calendarMonthLabel", "teacherCalendar",
     "selectedStandardsList", "selectedDatesList", "studentDate", "calendarSummary", "assignmentMeta",
     "studentQuestion", "answerForm", "studentAnswer", "studentFeedback", "gradebookRange", "gradebookDate",
@@ -106,7 +106,7 @@ function migrateState() {
   state.selectedStandardCodes = state.selectedStandardCodes.filter((code) => standards.some((item) => item.code === code));
   if (!state.selectedStandardCodes.length) state.selectedStandardCodes = [defaultStandard().code];
   if (!Array.isArray(state.selectedDates) || !state.selectedDates.length) state.selectedDates = [isoToday];
-  state.selectedDates = unique(state.selectedDates).filter((date) => date <= isoToday && isSchoolDay(date)).sort();
+  state.selectedDates = unique(state.selectedDates).filter((date) => isSchoolDay(date)).sort();
   if (!state.selectedDates.length) state.selectedDates = [isoToday];
   if (!state.generatedDrafts) state.generatedDrafts = {};
   if (!Array.isArray(state.approvedTeachers)) state.approvedTeachers = ["patrick.feltner@knott.kyschools.us"];
@@ -237,8 +237,6 @@ function renderAll() {
   els.joinCode.value = state.page.code;
   els.subjectSelect.value = state.page.subject;
   els.gradeSelect.value = state.page.grade;
-  els.dateStart.max = isoToday;
-  els.dateEnd.max = isoToday;
   els.studentDate.max = isoToday;
   els.gradebookDate.max = isoToday;
   els.dateStart.value = state.selectedDates[0] || isoToday;
@@ -423,7 +421,7 @@ function renderTeacherCalendar() {
 
   els.teacherCalendar.innerHTML = days.map((date) => {
     const selected = state.selectedDates.includes(date);
-    const disabled = date > isoToday;
+    const disabled = false;
     const posted = Boolean(state.ringers[date]);
     return `
       <button class="${selected ? "is-selected" : ""} ${posted ? "is-posted" : ""}" type="button" data-date="${date}" ${disabled ? "disabled" : ""}>
@@ -443,7 +441,7 @@ function toggleDate(date) {
 
   if (state.selectedDates.includes(date)) {
     state.selectedDates = state.selectedDates.filter((item) => item !== date);
-  } else if (date <= isoToday && isSchoolDay(date)) {
+  } else if (isSchoolDay(date)) {
     state.selectedDates.push(date);
   }
 
@@ -464,7 +462,7 @@ function selectDateRange() {
 
   state.selectedDates = datesBetween(start <= end ? start : end, start <= end ? end : start);
   if (!state.selectedDates.length) {
-    setMessage(els.teacherMessage, "Pick a range with at least one school day that is not in the future.", "teacher-error");
+    setMessage(els.teacherMessage, "Pick a range with at least one school day.", "teacher-error");
     state.selectedDates = [isoToday];
   }
   state.calendarMonth = state.selectedDates[0].slice(0, 7);
@@ -525,6 +523,7 @@ async function generateQuestions() {
         standards: standardsForPrompt,
         dok: els.dokSelect.value,
         questionType: els.questionType.value,
+        teacherPrompt: els.teacherPrompt.value.trim(),
         sequence: index + 1
       });
     });
@@ -560,9 +559,10 @@ async function publishRingers(event) {
       standards: standardsForPrompt,
       dok: els.dokSelect.value,
       questionType: els.questionType.value,
+      teacherPrompt: els.teacherPrompt.value.trim(),
       sequence: index + 1
     });
-    state.ringers[date] = buildRinger(date, standardsForPrompt, els.dokSelect.value, els.questionType.value, question);
+    state.ringers[date] = buildRinger(date, standardsForPrompt, els.dokSelect.value, els.questionType.value, question, els.teacherPrompt.value.trim());
   });
 
   persist();
@@ -686,6 +686,7 @@ async function apiGenerateBellringers(selectedStandards) {
     grade: state.page.grade,
     dok: els.dokSelect.value,
     questionType: els.questionType.value,
+    teacherPrompt: els.teacherPrompt.value.trim(),
     dates: state.selectedDates,
     standards: selectedStandards.map((standard) => ({
       code: standard.code,
@@ -780,7 +781,7 @@ function isValidTeacherLogin(email, password) {
   return teacherCredentials[email] === password;
 }
 
-function ksaPrompt({ date, subject, grade, standards, dok, questionType, sequence = 1 }) {
+function ksaPrompt({ date, subject, grade, standards, dok, questionType, teacherPrompt = "", sequence = 1 }) {
   const topic = standards.map((standard) => standard.text).join(" ");
   const gradeText = gradeLevelContent(grade);
   const dokDirections = {
@@ -789,20 +790,21 @@ function ksaPrompt({ date, subject, grade, standards, dok, questionType, sequenc
     "3": "analyze evidence, justify a claim, or critique reasoning",
     "4": "synthesize multiple ideas and defend a conclusion"
   };
+  const topicLine = teacherPrompt ? `\n\nTeacher topic: ${teacherPrompt}` : "";
 
   if (subject === "Mathematics") {
-    return `Scenario: ${gradeText.mathScenario}\n\nQuestion: ${gradeText.mathQuestion} In your answer, ${dokDirections[dok]}, show your work, label the answer, and explain why your strategy makes sense.`;
+    return `Scenario: ${gradeText.mathScenario}${topicLine}\n\nQuestion type: ${questionType}\nQuestion: ${gradeText.mathQuestion} In your answer, ${dokDirections[dok]}, show your work, label the answer, and explain why your strategy makes sense.`;
   }
 
   if (subject === "Science") {
-    return `Source: ${gradeText.scienceSource}\n\nQuestion: ${gradeText.scienceQuestion} Use evidence from the source in your answer, and explain how the evidence supports your thinking.`;
+    return `Source: ${gradeText.scienceSource}${topicLine}\n\nQuestion type: ${questionType}\nQuestion: ${gradeText.scienceQuestion} Use evidence from the source in your answer, and explain how the evidence supports your thinking.`;
   }
 
   if (subject === "Social Studies") {
-    return `Source: ${gradeText.socialStudiesSource}\n\nQuestion: ${gradeText.socialStudiesQuestion} Use evidence from the source and explain how that evidence supports your answer.`;
+    return `Source: ${gradeText.socialStudiesSource}${topicLine}\n\nQuestion type: ${questionType}\nQuestion: ${gradeText.socialStudiesQuestion} Use evidence from the source and explain how that evidence supports your answer.`;
   }
 
-  return `Passage: ${gradeText.readingPassage}\n\nQuestion: ${gradeText.readingQuestion} ${capitalize(dokDirections[dok])} using evidence from the passage.`;
+  return `Passage: ${gradeText.readingPassage}${topicLine}\n\nQuestion type: ${questionType}\nQuestion: ${gradeText.readingQuestion} ${capitalize(dokDirections[dok])} using evidence from the passage.`;
 }
 
 function gradeLevelContent(grade) {
@@ -852,7 +854,7 @@ function gradeLevelContent(grade) {
   return content[grade] || content["6"];
 }
 
-function buildRinger(date, selectedStandards, dok, questionType, question) {
+function buildRinger(date, selectedStandards, dok, questionType, question, teacherPrompt = "") {
   return {
     date,
     pageCode: state.page.code,
@@ -864,6 +866,7 @@ function buildRinger(date, selectedStandards, dok, questionType, question) {
     grade: state.page.grade,
     dok,
     questionType,
+    teacherPrompt,
     question
   };
 }
@@ -946,7 +949,7 @@ function datesForRange(anchor, range) {
 
   for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
     const date = toISODate(cursor);
-    if (isSchoolDay(date) && date <= isoToday) dates.push(date);
+    if (isSchoolDay(date)) dates.push(date);
     if (range === "day") break;
   }
 
@@ -959,7 +962,7 @@ function datesBetween(start, end) {
   const stop = new Date(`${end}T12:00:00`);
   for (; cursor <= stop; cursor.setDate(cursor.getDate() + 1)) {
     const date = toISODate(cursor);
-    if (isSchoolDay(date) && date <= isoToday) dates.push(date);
+    if (isSchoolDay(date)) dates.push(date);
   }
   return dates;
 }

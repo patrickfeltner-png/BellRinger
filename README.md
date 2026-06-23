@@ -8,8 +8,9 @@ BellRinger is a classroom bell-ringer app with teacher scheduling, student respo
 - Teacher password check plus owner approval for new teacher accounts
 - Teacher-created class page with a join code
 - Kentucky standards picker for grades 5-8 with subject, grade, search, and multi-select filters
-- Teacher calendar for selecting one school day, a range, or multiple individual dates
+- Teacher hub for selecting teaching topic, grade, standards, DOK, question type, and future posting dates
 - OpenAI-backed KSA-style bell ringer generation for reading passages, source-based prompts, math problems, and science investigations
+- Selectable question types including short answer, multiple choice, multiple select, drag/drop-style matching, constructed response, math problems, science investigations, and source-based prompts
 - Grade-level reading/source/problem text for generated bell ringers
 - Student view hides standards and shows only the item content students need
 - Batch publishing for multiple selected dates
