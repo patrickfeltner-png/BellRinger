@@ -45,6 +45,7 @@
           <span>Signed in as</span>
           <strong id="activeUser">Not signed in</strong>
           <span id="activeRole">Choose a role to begin</span>
+          <button id="signOutButton" class="sidebar-button" type="button" hidden>Sign out</button>
         </section>
       </aside>
 
@@ -60,7 +61,7 @@
         <section id="teacherView" class="view-panel is-visible" aria-labelledby="teacher-heading">
           <div class="workspace-grid">
             <form id="pageForm" class="panel compact-panel">
-              <h3 id="teacher-heading">Class page</h3>
+              <h3>Class details</h3>
               <label>
                 Page name
                 <input id="pageName" type="text" value="6th Grade ELA - Homeroom">
@@ -69,15 +70,7 @@
                 Join code
                 <input id="joinCode" type="text" value="HART-ELA6">
               </label>
-              <label>
-                Teaching topic / subject
-                <select id="subjectSelect"></select>
-              </label>
-              <label>
-                Grade
-                <select id="gradeSelect"></select>
-              </label>
-              <button class="secondary-button" type="submit">Save page</button>
+              <button class="secondary-button" type="submit">Save class details</button>
             </form>
 
             <section class="panel approval-panel">
@@ -90,93 +83,142 @@
               <div id="approvalList" class="approval-list"></div>
             </section>
 
-            <section class="panel standards-panel">
-              <div class="panel-heading">
-                <div>
-                  <h3>Kentucky standards</h3>
-                  <p>Select one or more standards for ChatGPT to use.</p>
-                </div>
-                <input id="standardSearch" class="search-input" type="search" placeholder="Search standards">
-              </div>
-              <div id="standardsList" class="standards-list" aria-live="polite"></div>
-            </section>
-
             <form id="ringerForm" class="panel ringer-builder">
               <div class="panel-heading">
                 <div>
-                  <h3>Bell ringer hub</h3>
-                  <p>Choose dates, question type, standards, and what the bell ringers should be about.</p>
+                  <h3 id="teacher-heading">Bell ringer hub</h3>
+                  <p>Plan a whole week at once, then adjust any individual day.</p>
+                </div>
+                <div class="class-switcher">
+                  <label>
+                    Active class
+                    <select id="classSelect"></select>
+                  </label>
+                  <button id="newClassButton" class="secondary-button" type="button">Create class</button>
                 </div>
               </div>
 
-              <div class="builder-row">
-                <label>
-                  DOK
-                  <select id="dokSelect">
-                    <option value="1">DOK 1 - Recall</option>
-                    <option value="2">DOK 2 - Skill / Concept</option>
-                    <option value="3">DOK 3 - Strategic Thinking</option>
-                    <option value="4">DOK 4 - Extended Thinking</option>
-                  </select>
-                </label>
-                <label>
-                  Question type
-                  <select id="questionType">
-                    <option>Short answer</option>
-                    <option>Multiple choice</option>
-                    <option>Multiple select</option>
-                    <option>Drag and drop</option>
-                    <option>Evidence-based selected response</option>
-                    <option>Constructed response</option>
-                    <option>Math problem</option>
-                    <option>Science investigation</option>
-                    <option>Source-based prompt</option>
-                    <option>Teacher choice</option>
-                  </select>
-                </label>
-              </div>
-
-              <label>
-                Bell ringer topic or teacher prompt
-                <textarea id="teacherPrompt" rows="4" placeholder="Example: comparing theme and central idea using a short passage about teamwork. Include any vocabulary, unit topic, or question style you want ChatGPT to use."></textarea>
-              </label>
-
-              <div class="builder-row">
-                <label>
-                  Start date
-                  <input id="dateStart" type="date">
-                </label>
-                <label>
-                  End date
-                  <input id="dateEnd" type="date">
-                </label>
-              </div>
-
-              <div class="calendar-builder" aria-label="Bell ringer date picker">
-                <div class="calendar-builder-header">
-                  <button id="prevMonthButton" class="icon-button" type="button" aria-label="Previous month">&lt;</button>
-                  <strong id="calendarMonthLabel"></strong>
-                  <button id="nextMonthButton" class="icon-button" type="button" aria-label="Next month">&gt;</button>
+              <section class="workflow-step">
+                <div class="step-heading">
+                  <span>1</span>
+                  <div>
+                    <h4>Choose dates</h4>
+                    <p>Select individual school days or use a date range for the week.</p>
+                  </div>
                 </div>
-                <div class="calendar-weekdays" aria-hidden="true">
-                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span>
+
+                <div class="builder-row">
+                  <label>
+                    Start date
+                    <input id="dateStart" type="date">
+                  </label>
+                  <label>
+                    End date
+                    <input id="dateEnd" type="date">
+                  </label>
                 </div>
-                <div id="teacherCalendar" class="teacher-calendar"></div>
-              </div>
+                <button id="selectRangeButton" class="secondary-button range-button" type="button">Use this date range</button>
 
-              <div>
-                <h4>Selected standards</h4>
-                <div id="selectedStandardsList" class="selected-list"></div>
-              </div>
+                <div class="calendar-builder" aria-label="Bell ringer date picker">
+                  <div class="calendar-builder-header">
+                    <button id="prevMonthButton" class="icon-button" type="button" aria-label="Previous month">&lt;</button>
+                    <strong id="calendarMonthLabel"></strong>
+                    <button id="nextMonthButton" class="icon-button" type="button" aria-label="Next month">&gt;</button>
+                  </div>
+                  <div class="calendar-weekdays" aria-hidden="true">
+                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span>
+                  </div>
+                  <div id="teacherCalendar" class="teacher-calendar"></div>
+                </div>
 
-              <div>
-                <h4>Selected dates</h4>
-                <div id="selectedDatesList" class="selected-list"></div>
-              </div>
+                <div class="selection-summary">
+                  <strong>Selected dates</strong>
+                  <div id="selectedDatesList" class="selected-list"></div>
+                </div>
+              </section>
 
-              <label>
-                Bell ringer preview
-                <textarea id="questionText" rows="8" placeholder="Write your own prompt, or generate KSA-style bell ringers for the selected dates."></textarea>
+              <section class="workflow-step">
+                <div class="step-heading">
+                  <span>2</span>
+                  <div>
+                    <h4>Set up the week</h4>
+                    <p>These choices can be copied to every selected date.</p>
+                  </div>
+                </div>
+
+                <div class="builder-row">
+                  <label>
+                    Teaching subject
+                    <select id="subjectSelect"></select>
+                  </label>
+                  <label>
+                    Grade
+                    <select id="gradeSelect"></select>
+                  </label>
+                </div>
+
+                <label>
+                  Topic or idea
+                  <textarea id="teacherPrompt" rows="4" placeholder="Example: Compare theme and central idea using a short passage about teamwork."></textarea>
+                </label>
+
+                <div class="builder-row">
+                  <label>
+                    Question type
+                    <select id="questionType">
+                      <option>Short answer</option>
+                      <option>Multiple choice</option>
+                      <option>Multiple select</option>
+                      <option>Drag and drop</option>
+                      <option>Evidence-based selected response</option>
+                      <option>Constructed response</option>
+                      <option>Math problem</option>
+                      <option>Science investigation</option>
+                      <option>Source-based prompt</option>
+                      <option>Teacher choice</option>
+                    </select>
+                  </label>
+                  <label>
+                    Depth of Knowledge
+                    <select id="dokSelect">
+                      <option value="1">DOK 1 - Recall</option>
+                      <option value="2">DOK 2 - Skill / Concept</option>
+                      <option value="3">DOK 3 - Strategic Thinking</option>
+                      <option value="4">DOK 4 - Extended Thinking</option>
+                    </select>
+                  </label>
+                </div>
+
+                <details class="standards-menu" open>
+                  <summary>Choose Kentucky standards</summary>
+                  <div class="standards-menu-content">
+                    <input id="standardSearch" class="search-input" type="search" placeholder="Search standards">
+                    <div id="standardsList" class="standards-list" aria-live="polite"></div>
+                  </div>
+                </details>
+
+                <div class="selection-summary">
+                  <strong>Selected standards</strong>
+                  <div id="selectedStandardsList" class="selected-list"></div>
+                </div>
+
+                <button id="applyToAllButton" class="secondary-button" type="button">Apply setup to all selected dates</button>
+              </section>
+
+              <section class="workflow-step">
+                <div class="step-heading">
+                  <span>3</span>
+                  <div>
+                    <h4>Review each date</h4>
+                    <p>Edit any day before generating the questions.</p>
+                  </div>
+                </div>
+                <div id="dateSetupList" class="date-setup-list"></div>
+              </section>
+
+              <label class="generated-preview">
+                Generated preview
+                <textarea id="questionText" rows="10" placeholder="Generated readings and questions will appear here."></textarea>
               </label>
 
               <div class="button-row">

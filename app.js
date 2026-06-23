@@ -118,7 +118,7 @@ function migrateState() {
   if (!Array.isArray(state.pendingTeacherApprovals)) state.pendingTeacherApprovals = [];
   delete state.approvedStudents;
   delete state.pendingApprovals;
-  if (!state.calendarMonth) state.calendarMonth = state.selectedDates[0].slice(0, 7);
+  state.calendarMonth = actualISODate.slice(0, 7);
   if (!["5", "6", "7", "8"].includes(state.page.grade)) state.page.grade = "6";
   if (!Array.isArray(state.classes) || !state.classes.length) {
     const firstClass = { id: "class-default", ...state.page };
@@ -194,9 +194,9 @@ function bindEvents() {
   });
 
   els.signInButton.addEventListener("click", signIn);
-  els.signOutButton.addEventListener("click", signOut);
-  els.classSelect.addEventListener("change", () => switchClass(els.classSelect.value));
-  els.newClassButton.addEventListener("click", createNewClass);
+  if (els.signOutButton) els.signOutButton.addEventListener("click", signOut);
+  if (els.classSelect) els.classSelect.addEventListener("change", () => switchClass(els.classSelect.value));
+  if (els.newClassButton) els.newClassButton.addEventListener("click", createNewClass);
   els.standardSearch.addEventListener("input", renderStandards);
   els.studentDate.addEventListener("change", renderStudentAssignment);
   els.gradebookRange.addEventListener("change", renderGradebook);
@@ -232,6 +232,7 @@ function bindEvents() {
   els.subjectSelect.addEventListener("change", () => {
     state.page.subject = els.subjectSelect.value;
     resetDateStandardsForClass();
+    saveActiveClassRecord();
     invalidateSelectedDrafts();
     persist();
     renderStandards();
@@ -241,6 +242,7 @@ function bindEvents() {
   els.gradeSelect.addEventListener("change", () => {
     state.page.grade = els.gradeSelect.value;
     resetDateStandardsForClass();
+    saveActiveClassRecord();
     invalidateSelectedDrafts();
     persist();
     renderStandards();
@@ -270,7 +272,7 @@ function renderAll() {
   els.activeRole.textContent = state.email
     ? state.teacherAuthenticated ? "Teacher mode verified" : `${capitalize(state.role)} mode`
     : "Choose a role to begin";
-  els.signOutButton.hidden = !state.email;
+  if (els.signOutButton) els.signOutButton.hidden = !state.email;
   els.passwordField.hidden = state.role !== "teacher";
   renderClassSelect();
   els.pageName.value = state.page.name;

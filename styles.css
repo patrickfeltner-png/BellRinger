@@ -142,6 +142,22 @@ textarea:focus {
   gap: 14px;
 }
 
+.sidebar-button {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #f7fbfa;
+  background: transparent;
+  font-weight: 700;
+}
+
+.sidebar-button:hover,
+.sidebar-button:focus-visible {
+  border-color: #f7c75f;
+  color: #f7c75f;
+}
+
 .role-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -258,7 +274,7 @@ main {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 360px) minmax(360px, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
   gap: 18px;
   align-items: start;
 }
@@ -280,6 +296,160 @@ main {
 
 .ringer-builder {
   grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.compact-panel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.approval-panel {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.class-switcher {
+  display: grid;
+  grid-template-columns: minmax(190px, 280px) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.workflow-step {
+  display: grid;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.workflow-step:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.step-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.step-heading > span,
+.date-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-weight: 900;
+}
+
+.step-heading h4,
+.date-setup-header h5 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  text-transform: none;
+}
+
+.step-heading p,
+.date-setup-header p {
+  margin: 3px 0 0;
+}
+
+.selection-summary {
+  display: grid;
+  gap: 9px;
+}
+
+.range-button {
+  justify-self: start;
+}
+
+.standards-menu {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.standards-menu summary {
+  cursor: pointer;
+  padding: 13px 14px;
+  color: var(--green-dark);
+  font-weight: 900;
+}
+
+.standards-menu-content,
+.date-standard-options {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding: 14px;
+}
+
+.date-setup-list {
+  display: grid;
+  gap: 12px;
+}
+
+.date-setup-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--blue);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fbfcfc;
+}
+
+.date-setup-header,
+.date-setup-header > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.date-setup-header > div {
+  justify-content: flex-start;
+}
+
+.standard-check {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.standard-check:last-child {
+  border-bottom: 0;
+}
+
+.standard-check input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+
+.standard-check span {
+  display: grid;
+  gap: 3px;
+}
+
+.standard-check strong {
+  color: var(--blue);
+}
+
+.generated-preview {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
 }
 
 .panel h3 {
@@ -420,13 +590,6 @@ main {
 .teacher-calendar button:disabled {
   cursor: not-allowed;
   opacity: 0.42;
-}
-
-.ringer-builder h4 {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: 0.83rem;
-  text-transform: uppercase;
 }
 
 .selected-list {
@@ -643,6 +806,12 @@ td {
   .ringer-builder {
     grid-column: auto;
   }
+
+  .compact-panel,
+  .approval-panel {
+    grid-column: auto;
+    grid-row: auto;
+  }
 }
 
 @media (max-width: 680px) {
@@ -659,6 +828,7 @@ td {
 
   .builder-row,
   .button-row,
+  .class-switcher,
   .gradebook-controls,
   .stats-grid {
     grid-template-columns: 1fr;
