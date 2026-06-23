@@ -12,11 +12,15 @@ const state = {
     subject: "English Language Arts",
     grade: "6"
   },
+  classes: [],
+  activeClassId: "",
   selectedStandardCodes: ["KY.6.RI.2"],
   selectedDates: [isoToday],
+  dateConfigs: {},
   calendarMonth: isoToday.slice(0, 7),
   generatedDrafts: {},
   ringers: {},
+  ringersByClass: {},
   submissions: [],
   approvedTeachers: ["patrick.feltner@knott.kyschools.us"],
   pendingTeacherApprovals: [],
@@ -75,10 +79,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function cacheElements() {
   [
-    "emailInput", "passwordField", "passwordInput", "signInButton", "signinMessage", "activeUser", "activeRole", "todayPill", "pageTitle",
-    "pageForm", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsList",
+    "emailInput", "passwordField", "passwordInput", "signInButton", "signOutButton", "signinMessage", "activeUser", "activeRole", "todayPill", "pageTitle",
+    "pageForm", "classSelect", "newClassButton", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsList",
     "approvalList",
-    "ringerForm", "dateStart", "dateEnd", "dokSelect", "questionType", "teacherPrompt", "questionText", "generateButton",
+    "ringerForm", "dateStart", "dateEnd", "selectRangeButton", "dokSelect", "questionType", "teacherPrompt", "applyToAllButton", "dateSetupList", "questionText", "generateButton",
     "teacherMessage", "prevMonthButton", "nextMonthButton", "calendarMonthLabel", "teacherCalendar",
     "selectedStandardsList", "selectedDatesList", "studentDate", "calendarSummary", "assignmentMeta",
     "studentQuestion", "answerForm", "studentAnswer", "studentFeedback", "gradebookRange", "gradebookDate",
@@ -109,13 +113,31 @@ function migrateState() {
   state.selectedDates = unique(state.selectedDates).filter((date) => isSchoolDay(date)).sort();
   if (!state.selectedDates.length) state.selectedDates = [isoToday];
   if (!state.generatedDrafts) state.generatedDrafts = {};
+  if (!state.dateConfigs || typeof state.dateConfigs !== "object") state.dateConfigs = {};
   if (!Array.isArray(state.approvedTeachers)) state.approvedTeachers = ["patrick.feltner@knott.kyschools.us"];
   if (!Array.isArray(state.pendingTeacherApprovals)) state.pendingTeacherApprovals = [];
   delete state.approvedStudents;
   delete state.pendingApprovals;
   if (!state.calendarMonth) state.calendarMonth = state.selectedDates[0].slice(0, 7);
   if (!["5", "6", "7", "8"].includes(state.page.grade)) state.page.grade = "6";
-  state.teacherAuthenticated = false;
+  if (!Array.isArray(state.classes) || !state.classes.length) {
+    const firstClass = { id: "class-default", ...state.page };
+    state.classes = [firstClass];
+    state.activeClassId = firstClass.id;
+  }
+  if (!state.activeClassId || !state.classes.some((item) => item.id === state.activeClassId)) {
+    state.activeClassId = state.classes[0].id;
+  }
+  const activeClass = state.classes.find((item) => item.id === state.activeClassId);
+  state.page = { name: activeClass.name, code: activeClass.code, subject: activeClass.subject, grade: activeClass.grade };
+  if (!state.ringersByClass || typeof state.ringersByClass !== "object") state.ringersByClass = {};
+  if (!state.ringersByClass[state.activeClassId]) {
+    state.ringersByClass[state.activeClassId] = state.ringers || {};
+  }
+  state.submissions = (state.submissions || []).map((submission) => ({
+    ...submission,
+    classId: submission.classId || state.activeClassId
+  }));
 }
 
 function persist() {
@@ -123,9 +145,12 @@ function persist() {
 }
 
 function seedInitialData() {
-  if (!state.ringers[isoToday]) {
+  if (state.activeClassId !== "class-default") return;
+  const ringers = activeRingers();
+
+  if (!ringers[isoToday]) {
     const standard = standards.find((item) => item.code === "KY.6.RI.2");
-    state.ringers[isoToday] = buildRinger(isoToday, [standard], "2", "KSA-style reading response", ksaPrompt({
+    ringers[isoToday] = buildRinger(isoToday, [standard], "2", "KSA-style reading response", ksaPrompt({
       date: isoToday,
       subject: "English Language Arts",
       grade: "6",
@@ -136,9 +161,9 @@ function seedInitialData() {
   }
 
   const previous = previousSchoolDay(isoToday);
-  if (!state.ringers[previous]) {
+  if (!ringers[previous]) {
     const standard = standards.find((item) => item.code === "KY.6.NS.1");
-    state.ringers[previous] = buildRinger(previous, [standard], "2", "KSA-style math problem", ksaPrompt({
+    ringers[previous] = buildRinger(previous, [standard], "2", "KSA-style math problem", ksaPrompt({
       date: previous,
       subject: "Mathematics",
       grade: "6",
@@ -169,18 +194,26 @@ function bindEvents() {
   });
 
   els.signInButton.addEventListener("click", signIn);
+  els.signOutButton.addEventListener("click", signOut);
+  els.classSelect.addEventListener("change", () => switchClass(els.classSelect.value));
+  els.newClassButton.addEventListener("click", createNewClass);
   els.standardSearch.addEventListener("input", renderStandards);
   els.studentDate.addEventListener("change", renderStudentAssignment);
   els.gradebookRange.addEventListener("change", renderGradebook);
   els.gradebookDate.addEventListener("change", renderGradebook);
+  els.dokSelect.addEventListener("change", invalidateSelectedDrafts);
+  els.questionType.addEventListener("change", invalidateSelectedDrafts);
+  els.teacherPrompt.addEventListener("input", invalidateSelectedDrafts);
+  els.applyToAllButton.addEventListener("click", applyWeeklySetupToAllDates);
+  els.dateSetupList.addEventListener("input", handleDateConfigChange);
+  els.dateSetupList.addEventListener("change", handleDateConfigChange);
   els.generateButton.addEventListener("click", generateQuestions);
   els.ringerForm.addEventListener("submit", publishRingers);
   els.answerForm.addEventListener("submit", submitAnswer);
   els.prevMonthButton.addEventListener("click", () => moveCalendar(-1));
   els.nextMonthButton.addEventListener("click", () => moveCalendar(1));
 
-  els.dateStart.addEventListener("change", selectDateRange);
-  els.dateEnd.addEventListener("change", selectDateRange);
+  els.selectRangeButton.addEventListener("click", selectDateRange);
 
   els.pageForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -189,7 +222,8 @@ function bindEvents() {
     state.page.code = els.joinCode.value.trim() || state.page.code;
     state.page.subject = els.subjectSelect.value;
     state.page.grade = els.gradeSelect.value;
-    state.selectedStandardCodes = [defaultStandard().code];
+    saveActiveClassRecord();
+    resetDateStandardsForClass();
     setMessage(els.teacherMessage, "Class page saved.", "teacher-ok");
     persist();
     renderAll();
@@ -197,16 +231,20 @@ function bindEvents() {
 
   els.subjectSelect.addEventListener("change", () => {
     state.page.subject = els.subjectSelect.value;
-    state.selectedStandardCodes = [defaultStandard().code];
+    resetDateStandardsForClass();
+    invalidateSelectedDrafts();
     persist();
     renderStandards();
+    renderDateSetupList();
   });
 
   els.gradeSelect.addEventListener("change", () => {
     state.page.grade = els.gradeSelect.value;
-    state.selectedStandardCodes = [defaultStandard().code];
+    resetDateStandardsForClass();
+    invalidateSelectedDrafts();
     persist();
     renderStandards();
+    renderDateSetupList();
   });
 }
 
@@ -232,7 +270,9 @@ function renderAll() {
   els.activeRole.textContent = state.email
     ? state.teacherAuthenticated ? "Teacher mode verified" : `${capitalize(state.role)} mode`
     : "Choose a role to begin";
+  els.signOutButton.hidden = !state.email;
   els.passwordField.hidden = state.role !== "teacher";
+  renderClassSelect();
   els.pageName.value = state.page.name;
   els.joinCode.value = state.page.code;
   els.subjectSelect.value = state.page.subject;
@@ -248,6 +288,7 @@ function renderAll() {
   renderApprovals();
   renderTeacherCalendar();
   renderSelectedSummaries();
+  renderDateSetupList();
   renderDraftPreview();
   renderStudentAssignment();
   renderGradebook();
@@ -312,6 +353,95 @@ function signIn() {
   persist();
   renderAll();
   setView(state.role === "teacher" ? "teacher" : "student");
+}
+
+function signOut() {
+  state.email = "";
+  state.teacherAuthenticated = false;
+  els.passwordInput.value = "";
+  persist();
+  renderAll();
+  setView("student");
+  setMessage(els.signinMessage, "You have been signed out.", "teacher-ok");
+}
+
+function activeRingers() {
+  if (!state.ringersByClass || typeof state.ringersByClass !== "object") state.ringersByClass = {};
+  if (!state.ringersByClass[state.activeClassId]) state.ringersByClass[state.activeClassId] = {};
+  return state.ringersByClass[state.activeClassId];
+}
+
+function renderClassSelect() {
+  if (!els.classSelect) return;
+  els.classSelect.innerHTML = state.classes
+    .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
+    .join("");
+  els.classSelect.value = state.activeClassId;
+}
+
+function saveActiveClassRecord() {
+  const current = state.classes.find((item) => item.id === state.activeClassId);
+  if (!current) return;
+  Object.assign(current, {
+    name: state.page.name,
+    code: state.page.code,
+    subject: state.page.subject,
+    grade: state.page.grade
+  });
+}
+
+function resetPlannerForClass() {
+  const firstStandard = standards.find((item) => item.subject === state.page.subject && item.grade === state.page.grade)
+    || standards.find((item) => item.grade === state.page.grade)
+    || standards[0];
+  state.selectedStandardCodes = [firstStandard.code];
+  state.selectedDates = [isoToday];
+  state.dateConfigs = {};
+  state.generatedDrafts = {};
+  state.calendarMonth = isoToday.slice(0, 7);
+  if (els.standardSearch) els.standardSearch.value = "";
+}
+
+function switchClass(classId) {
+  if (!classId || classId === state.activeClassId) return;
+  saveActiveClassRecord();
+  const nextClass = state.classes.find((item) => item.id === classId);
+  if (!nextClass) return;
+  state.activeClassId = nextClass.id;
+  state.page = {
+    name: nextClass.name,
+    code: nextClass.code,
+    subject: nextClass.subject,
+    grade: nextClass.grade
+  };
+  activeRingers();
+  resetPlannerForClass();
+  persist();
+  renderAll();
+  setMessage(els.teacherMessage, `${nextClass.name} is now active.`, "teacher-ok");
+}
+
+function createNewClass() {
+  if (!requireTeacherAccess()) return;
+  saveActiveClassRecord();
+  const number = state.classes.length + 1;
+  const newClass = {
+    id: `class-${Date.now()}`,
+    name: `New Class ${number}`,
+    code: `CLASS-${String(Date.now()).slice(-4)}`,
+    subject: state.page.subject,
+    grade: state.page.grade
+  };
+  state.classes.push(newClass);
+  state.activeClassId = newClass.id;
+  state.page = { name: newClass.name, code: newClass.code, subject: newClass.subject, grade: newClass.grade };
+  state.ringersByClass[newClass.id] = {};
+  resetPlannerForClass();
+  persist();
+  renderAll();
+  setMessage(els.teacherMessage, "New class created. Give it a name, then click Save class page.", "teacher-ok");
+  els.pageName.focus();
+  els.pageName.select();
 }
 
 function renderStandards() {
@@ -402,12 +532,14 @@ function toggleStandard(code) {
     state.selectedStandardCodes.push(code);
   }
 
+  invalidateSelectedDrafts();
   persist();
   renderStandards();
   renderDraftPreview();
 }
 
 function renderTeacherCalendar() {
+  const ringers = activeRingers();
   const [year, month] = state.calendarMonth.split("-").map(Number);
   const first = new Date(year, month - 1, 1, 12);
   const last = new Date(year, month, 0, 12);
@@ -422,7 +554,7 @@ function renderTeacherCalendar() {
   els.teacherCalendar.innerHTML = days.map((date) => {
     const selected = state.selectedDates.includes(date);
     const disabled = false;
-    const posted = Boolean(state.ringers[date]);
+    const posted = Boolean(ringers[date]);
     return `
       <button class="${selected ? "is-selected" : ""} ${posted ? "is-posted" : ""}" type="button" data-date="${date}" ${disabled ? "disabled" : ""}>
         <span>${Number(date.slice(8, 10))}</span>
@@ -447,9 +579,11 @@ function toggleDate(date) {
 
   state.selectedDates = unique(state.selectedDates).sort();
   if (!state.selectedDates.length) state.selectedDates = [isoToday];
+  ensureDateConfigs();
   persist();
   renderTeacherCalendar();
   renderSelectedSummaries();
+  renderDateSetupList();
   renderDraftPreview();
 }
 
@@ -465,10 +599,12 @@ function selectDateRange() {
     setMessage(els.teacherMessage, "Pick a range with at least one school day.", "teacher-error");
     state.selectedDates = [isoToday];
   }
+  ensureDateConfigs();
   state.calendarMonth = state.selectedDates[0].slice(0, 7);
   persist();
   renderTeacherCalendar();
   renderSelectedSummaries();
+  renderDateSetupList();
   renderDraftPreview();
 }
 
@@ -495,35 +631,172 @@ function renderSelectedSummaries() {
   `).join("");
 }
 
+function resetDateStandardsForClass() {
+  const first = standards.find((standard) => {
+    return standard.subject === state.page.subject && standard.grade === state.page.grade;
+  });
+  state.selectedStandardCodes = first ? [first.code] : [];
+  state.selectedDates.forEach((date) => {
+    if (!state.dateConfigs[date]) return;
+    state.dateConfigs[date].standardCodes = [...state.selectedStandardCodes];
+    delete state.generatedDrafts[date];
+  });
+}
+
+function ensureDateConfigs() {
+  state.selectedDates.forEach((date) => {
+    if (state.dateConfigs[date]) return;
+    state.dateConfigs[date] = {
+      teacherPrompt: els.teacherPrompt.value.trim(),
+      questionType: els.questionType.value,
+      dok: els.dokSelect.value,
+      standardCodes: [...state.selectedStandardCodes]
+    };
+  });
+}
+
+function applyWeeklySetupToAllDates() {
+  if (!requireTeacherAccess()) return;
+  state.selectedDates.forEach((date) => {
+    state.dateConfigs[date] = {
+      teacherPrompt: els.teacherPrompt.value.trim(),
+      questionType: els.questionType.value,
+      dok: els.dokSelect.value,
+      standardCodes: [...state.selectedStandardCodes]
+    };
+    delete state.generatedDrafts[date];
+  });
+  persist();
+  renderDateSetupList();
+  renderDraftPreview();
+  setMessage(els.teacherMessage, "Weekly setup applied. You can now adjust any individual date.", "teacher-ok");
+}
+
+function renderDateSetupList() {
+  ensureDateConfigs();
+  const ringers = activeRingers();
+  const classStandards = standards.filter((standard) => {
+    return standard.subject === state.page.subject && standard.grade === state.page.grade;
+  });
+  const questionTypes = Array.from(els.questionType.options).map((option) => option.value);
+  const dokOptions = Array.from(els.dokSelect.options).map((option) => ({
+    value: option.value,
+    label: option.textContent
+  }));
+
+  els.dateSetupList.innerHTML = state.selectedDates.map((date, index) => {
+    const config = state.dateConfigs[date];
+    const selectedCount = config.standardCodes.length;
+    return `
+      <article class="date-setup-card">
+        <div class="date-setup-header">
+          <div>
+            <span class="date-number">${index + 1}</span>
+            <div>
+              <h5>${formatLongDate(date)}</h5>
+              <p>${ringers[date] ? "Previously published" : "Not published yet"}</p>
+            </div>
+          </div>
+          <span class="status-tag ${state.generatedDrafts[date] ? "ready" : ""}" data-date-status="${date}">${state.generatedDrafts[date] ? "Generated" : "Needs generation"}</span>
+        </div>
+
+        <label>
+          Topic or idea for this date
+          <textarea rows="3" data-config-date="${date}" data-config-field="teacherPrompt" placeholder="What should this day's bell ringer be about?">${escapeHtml(config.teacherPrompt)}</textarea>
+        </label>
+
+        <div class="builder-row">
+          <label>
+            Question type
+            <select data-config-date="${date}" data-config-field="questionType">
+              ${questionTypes.map((type) => `<option ${type === config.questionType ? "selected" : ""}>${escapeHtml(type)}</option>`).join("")}
+            </select>
+          </label>
+          <label>
+            Depth of Knowledge
+            <select data-config-date="${date}" data-config-field="dok">
+              ${dokOptions.map((option) => `<option value="${option.value}" ${option.value === config.dok ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+
+        <details class="standards-menu date-standards-menu">
+          <summary data-standard-summary="${date}">${selectedCount} standard${selectedCount === 1 ? "" : "s"} selected</summary>
+          <div class="date-standard-options">
+            ${classStandards.map((standard) => `
+              <label class="standard-check">
+                <input type="checkbox" data-config-date="${date}" data-config-field="standardCodes" value="${standard.code}" ${config.standardCodes.includes(standard.code) ? "checked" : ""}>
+                <span><strong>${standard.code}</strong>${standard.text}</span>
+              </label>
+            `).join("")}
+          </div>
+        </details>
+      </article>
+    `;
+  }).join("");
+}
+
+function handleDateConfigChange(event) {
+  const target = event.target;
+  const date = target.dataset.configDate;
+  const field = target.dataset.configField;
+  if (!date || !field || !state.dateConfigs[date]) return;
+
+  if (field === "standardCodes") {
+    const checked = els.dateSetupList.querySelectorAll(`[data-config-date="${date}"][data-config-field="standardCodes"]:checked`);
+    state.dateConfigs[date].standardCodes = Array.from(checked).map((input) => input.value);
+    const summary = els.dateSetupList.querySelector(`[data-standard-summary="${date}"]`);
+    const count = state.dateConfigs[date].standardCodes.length;
+    if (summary) summary.textContent = `${count} standard${count === 1 ? "" : "s"} selected`;
+  } else {
+    state.dateConfigs[date][field] = target.value;
+  }
+
+  delete state.generatedDrafts[date];
+  const status = els.dateSetupList.querySelector(`[data-date-status="${date}"]`);
+  if (status) {
+    status.textContent = "Needs generation";
+    status.classList.remove("ready");
+  }
+  persist();
+  renderDraftPreview();
+  setMessage(els.teacherMessage, `${formatShortDate(date)} updated. Generate when ready.`, "teacher-ok");
+}
+
 async function generateQuestions() {
   if (!requireTeacherAccess()) return;
 
-  const selectedStandards = getSelectedStandards();
-  if (!selectedStandards.length || !state.selectedDates.length) {
-    setMessage(els.teacherMessage, "Select at least one standard and one school day.", "teacher-error");
+  ensureDateConfigs();
+  const missingStandardsDate = state.selectedDates.find((date) => !state.dateConfigs[date].standardCodes.length);
+  if (!state.selectedDates.length || missingStandardsDate) {
+    setMessage(els.teacherMessage, missingStandardsDate
+      ? `Choose at least one standard for ${formatShortDate(missingStandardsDate)}.`
+      : "Select at least one school day.", "teacher-error");
     return;
   }
 
   setMessage(els.teacherMessage, "Asking ChatGPT for classroom-ready KSA-style items...", "teacher-ok");
 
   try {
-    const result = await apiGenerateBellringers(selectedStandards);
+    const result = await apiGenerateBellringers();
     result.items.forEach((item) => {
       state.generatedDrafts[item.date] = item.studentPrompt;
     });
     setMessage(els.teacherMessage, `Generated ${result.items.length} live ChatGPT bell ringer${result.items.length === 1 ? "" : "s"}.`, "teacher-ok");
   } catch (error) {
     state.selectedDates.forEach((date, index) => {
-      const standard = selectedStandards[index % selectedStandards.length];
-      const standardsForPrompt = selectedStandards.length > 1 ? selectedStandards : [standard];
+      const config = state.dateConfigs[date];
+      const standardsForPrompt = config.standardCodes
+        .map((code) => standards.find((standard) => standard.code === code))
+        .filter(Boolean);
       state.generatedDrafts[date] = ksaPrompt({
         date,
         subject: state.page.subject,
         grade: state.page.grade,
         standards: standardsForPrompt,
-        dok: els.dokSelect.value,
-        questionType: els.questionType.value,
-        teacherPrompt: els.teacherPrompt.value.trim(),
+        dok: config.dok,
+        questionType: config.questionType,
+        teacherPrompt: config.teacherPrompt,
         sequence: index + 1
       });
     });
@@ -531,6 +804,7 @@ async function generateQuestions() {
   }
 
   persist();
+  renderDateSetupList();
   renderDraftPreview();
 }
 
@@ -538,9 +812,8 @@ async function publishRingers(event) {
   event.preventDefault();
   if (!requireTeacherAccess()) return;
 
-  const selectedStandards = getSelectedStandards();
-
-  if (!selectedStandards.length || !state.selectedDates.length) {
+  ensureDateConfigs();
+  if (!state.selectedDates.length) {
     setMessage(els.teacherMessage, "Select standards and dates before publishing.", "teacher-error");
     return;
   }
@@ -549,20 +822,23 @@ async function publishRingers(event) {
     await generateQuestions();
   }
 
+  const ringers = activeRingers();
   state.selectedDates.forEach((date, index) => {
-    const standard = selectedStandards[index % selectedStandards.length];
-    const standardsForPrompt = selectedStandards.length > 1 ? selectedStandards : [standard];
+    const config = state.dateConfigs[date];
+    const standardsForPrompt = config.standardCodes
+      .map((code) => standards.find((standard) => standard.code === code))
+      .filter(Boolean);
     const question = state.generatedDrafts[date] || ksaPrompt({
       date,
       subject: state.page.subject,
       grade: state.page.grade,
       standards: standardsForPrompt,
-      dok: els.dokSelect.value,
-      questionType: els.questionType.value,
-      teacherPrompt: els.teacherPrompt.value.trim(),
+      dok: config.dok,
+      questionType: config.questionType,
+      teacherPrompt: config.teacherPrompt,
       sequence: index + 1
     });
-    state.ringers[date] = buildRinger(date, standardsForPrompt, els.dokSelect.value, els.questionType.value, question, els.teacherPrompt.value.trim());
+    ringers[date] = buildRinger(date, standardsForPrompt, config.dok, config.questionType, question, config.teacherPrompt);
   });
 
   persist();
@@ -574,20 +850,41 @@ async function publishRingers(event) {
 
 function renderDraftPreview() {
   const drafts = state.selectedDates.map((date) => {
-    const draft = state.generatedDrafts[date] || state.ringers[date]?.question || "";
-    return `${formatLongDate(date)}\n${draft || "No draft yet. Click Generate selected dates."}`;
+    const draft = state.generatedDrafts[date] || "";
+    if (draft) return `${formatLongDate(date)}\n${draft}`;
+
+    const config = state.dateConfigs[date] || {};
+    const topic = config.teacherPrompt || "No topic entered yet";
+    return [
+      formatLongDate(date),
+      "Ready to generate",
+      `Topic: ${topic}`,
+      `Question type: ${config.questionType || els.questionType.value}`,
+      `DOK: ${config.dok || els.dokSelect.value}`,
+      "Click Generate selected dates to create the full student item."
+    ].join("\n");
   });
   els.questionText.value = drafts.join("\n\n---\n\n");
 }
 
+function invalidateSelectedDrafts() {
+  state.selectedDates.forEach((date) => {
+    delete state.generatedDrafts[date];
+  });
+  persist();
+  renderDraftPreview();
+  setMessage(els.teacherMessage, "Settings changed. Click Generate selected dates for a new preview.", "teacher-ok");
+}
+
 function renderStudentAssignment() {
   const date = els.studentDate.value || isoToday;
-  const ringer = state.ringers[date];
+  const ringers = activeRingers();
+  const ringer = ringers[date];
   const existing = currentStudentSubmission(date);
 
   els.calendarSummary.innerHTML = recentSchoolDays(8)
     .map((day) => {
-      const status = day > isoToday ? "locked" : currentStudentSubmission(day) ? "done" : state.ringers[day] ? "ready" : "";
+      const status = day > isoToday ? "locked" : currentStudentSubmission(day) ? "done" : ringers[day] ? "ready" : "";
       const label = status === "done" ? "Done" : status === "ready" ? "Ready" : status === "locked" ? "Locked" : "No post";
       return `
         <div class="calendar-row">
@@ -641,7 +938,7 @@ async function submitAnswer(event) {
   }
 
   const date = els.studentDate.value || isoToday;
-  const ringer = state.ringers[date];
+  const ringer = activeRingers()[date];
   const answer = els.studentAnswer.value.trim();
 
   if (!ringer || date > isoToday || !isSchoolDay(date) || !answer) {
@@ -657,8 +954,9 @@ async function submitAnswer(event) {
     grade = mockChatGPTGrade(ringer, answer);
     grade.feedback = `${grade.feedback} ChatGPT grading is not connected yet, so this is demo feedback.`;
   }
-  const existingIndex = state.submissions.findIndex((item) => item.date === date && item.email === state.email);
+  const existingIndex = state.submissions.findIndex((item) => item.classId === state.activeClassId && item.date === date && item.email === state.email);
   const submission = {
+    classId: state.activeClassId,
     date,
     email: state.email,
     name: nameFromEmail(state.email),
@@ -680,18 +978,26 @@ async function submitAnswer(event) {
   renderStudentAssignment();
 }
 
-async function apiGenerateBellringers(selectedStandards) {
+async function apiGenerateBellringers() {
+  const datePlans = state.selectedDates.map((date) => {
+    const config = state.dateConfigs[date];
+    return {
+      date,
+      teacherPrompt: config.teacherPrompt,
+      questionType: config.questionType,
+      dok: config.dok,
+      standards: config.standardCodes.map((code) => {
+        const standard = standards.find((item) => item.code === code);
+        return standard ? { code: standard.code, text: standard.text } : null;
+      }).filter(Boolean)
+    };
+  });
+
   return postJson("/api/bellringers/generate", {
     subject: state.page.subject,
     grade: state.page.grade,
-    dok: els.dokSelect.value,
-    questionType: els.questionType.value,
-    teacherPrompt: els.teacherPrompt.value.trim(),
     dates: state.selectedDates,
-    standards: selectedStandards.map((standard) => ({
-      code: standard.code,
-      text: standard.text
-    }))
+    datePlans
   });
 }
 
@@ -730,8 +1036,9 @@ function renderGradebook() {
   const range = els.gradebookRange.value || "day";
   const anchor = els.gradebookDate.value || isoToday;
   const windowDates = datesForRange(anchor, range);
-  const submissions = state.submissions.filter((item) => windowDates.includes(item.date));
-  const possible = windowDates.filter((day) => Boolean(state.ringers[day])).length * 5;
+  const ringers = activeRingers();
+  const submissions = state.submissions.filter((item) => item.classId === state.activeClassId && windowDates.includes(item.date));
+  const possible = windowDates.filter((day) => Boolean(ringers[day])).length * 5;
   const rows = state.students.map((student) => {
     const mine = submissions.filter((item) => item.email === student.email);
     const total = mine.reduce((sum, item) => sum + item.score, 0);
@@ -745,7 +1052,7 @@ function renderGradebook() {
   const avgScore = submissionCount ? (classTotal / submissionCount).toFixed(1) : "0.0";
 
   els.gradebookStats.innerHTML = [
-    ["Posted days", windowDates.filter((day) => state.ringers[day]).length],
+    ["Posted days", windowDates.filter((day) => ringers[day]).length],
     ["Submissions", submissionCount],
     ["Class average", `${avgScore}/5`],
     ["Possible per student", possible]
@@ -920,7 +1227,7 @@ function defaultStandard() {
 
 function currentStudentSubmission(date) {
   if (!state.email) return null;
-  return state.submissions.find((item) => item.date === date && item.email === state.email) || null;
+  return state.submissions.find((item) => item.classId === state.activeClassId && item.date === date && item.email === state.email) || null;
 }
 
 function recentSchoolDays(count) {
@@ -1016,6 +1323,15 @@ function capitalize(value) {
 function nameFromEmail(email) {
   const prefix = email.split("@")[0].replace(/[._-]+/g, " ");
   return prefix.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function setMessage(element, text, className) {
