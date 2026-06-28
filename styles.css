@@ -316,6 +316,46 @@ main {
   gap: 10px;
 }
 
+.class-management-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.class-list-panel {
+  grid-column: 1 / -1;
+}
+
+.class-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.class-list-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: left;
+  color: var(--ink);
+  background: #fbfcfc;
+}
+
+.class-list-item span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.class-list-item.is-active {
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 2px rgba(31, 122, 90, 0.13);
+  background: #f2faf6;
+}
+
 .workflow-step {
   display: grid;
   gap: 16px;
@@ -470,8 +510,33 @@ main {
   margin-bottom: 16px;
 }
 
+.standards-search-label,
+.standards-select-label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .search-input {
-  max-width: 280px;
+  width: min(100%, 520px);
+}
+
+.standards-select {
+  width: 100%;
+  min-height: 210px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  line-height: 1.35;
+}
+
+.standards-select option {
+  padding: 8px;
+  white-space: normal;
 }
 
 .standards-list {
@@ -480,6 +545,45 @@ main {
   max-height: 442px;
   overflow: auto;
   padding-right: 4px;
+}
+
+.standard-option {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.standard-option input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+
+.standard-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.standard-option strong {
+  color: var(--blue);
+}
+
+.standard-option small {
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.standard-option.is-selected {
+  border-color: var(--green);
+  background: #f2faf6;
 }
 
 .standard-card {
@@ -799,6 +903,7 @@ td {
   }
 
   .workspace-grid,
+  .class-management-layout,
   .student-layout {
     grid-template-columns: 1fr;
   }

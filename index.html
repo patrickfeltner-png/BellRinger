@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BellRinger</title>
-    <link rel="stylesheet" href="styles.css?v=20260623e">
+    <link rel="stylesheet" href="styles.css?v=20260628a">
   </head>
   <body>
     <div class="app-shell">
@@ -159,7 +159,16 @@
                 <details class="standards-menu" open>
                   <summary id="standardsMenuLabel">Select Kentucky standards (0 selected)</summary>
                   <div class="standards-menu-content">
-                    <input id="standardSearch" class="search-input" type="search" placeholder="Search standards">
+                    <label class="standards-search-label">
+                      Search standards
+                      <input id="standardSearch" class="search-input" type="search" placeholder="Type a code, keyword, or phrase">
+                    </label>
+                    <label class="standards-select-label">
+                      Standards dropdown
+                      <select id="standardsSelect" class="standards-select" multiple size="8" aria-describedby="standardsHelp"></select>
+                    </label>
+                    <p id="standardsHelp" class="form-note">Hold Ctrl while clicking to choose more than one standard.</p>
+                    <p id="standardsCount" class="form-note"></p>
                     <div id="standardsList" class="standards-list" aria-live="polite"></div>
                   </div>
                 </details>
@@ -315,7 +324,7 @@
       </main>
     </div>
 
-    <script src="standards-data.js?v=20260623f"></script>
-    <script src="app.js?v=20260623f"></script>
+    <script src="standards-data.js?v=20260628a"></script>
+    <script src="app.js?v=20260628a"></script>
   </body>
 </html>

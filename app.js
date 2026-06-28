@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function cacheElements() {
   [
     "emailInput", "passwordField", "passwordInput", "signInButton", "signOutButton", "signinMessage", "activeUser", "activeRole", "todayPill", "pageTitle",
-    "pageForm", "classSelect", "classList", "newClassButton", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsList", "standardsMenuLabel", "classesMessage",
+    "pageForm", "classSelect", "classList", "newClassButton", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsSelect", "standardsCount", "standardsList", "standardsMenuLabel", "classesMessage",
     "approvalList",
     "ringerForm", "dateStart", "dateEnd", "selectRangeButton", "dokSelect", "questionType", "teacherPrompt", "applyToAllButton", "dateSetupList", "questionText", "generateButton",
     "teacherMessage", "prevMonthButton", "nextMonthButton", "calendarMonthLabel", "teacherCalendar",
@@ -207,6 +207,7 @@ function bindEvents() {
   if (els.classSelect) els.classSelect.addEventListener("change", () => switchClass(els.classSelect.value));
   if (els.newClassButton) els.newClassButton.addEventListener("click", createNewClass);
   els.standardSearch.addEventListener("input", renderStandards);
+  if (els.standardsSelect) els.standardsSelect.addEventListener("change", handleStandardsSelectChange);
   els.studentDate.addEventListener("change", renderStudentAssignment);
   els.gradebookRange.addEventListener("change", renderGradebook);
   els.gradebookDate.addEventListener("change", renderGradebook);
@@ -470,7 +471,26 @@ function createNewClass() {
 }
 
 function renderStandards() {
-  const html = filteredStandards()
+  const filtered = filteredStandards();
+  const available = standardsForActiveClass();
+  const optionHtml = filtered
+    .map((standard) => `
+      <option value="${standard.code}" ${state.selectedStandardCodes.includes(standard.code) ? "selected" : ""}>
+        ${standard.code} - ${standard.text}
+      </option>
+    `)
+    .join("");
+  if (els.standardsSelect) {
+    els.standardsSelect.innerHTML = optionHtml;
+  }
+  if (els.standardsCount) {
+    const term = els.standardSearch ? els.standardSearch.value.trim() : "";
+    els.standardsCount.textContent = term
+      ? `Showing ${filtered.length} of ${available.length} standards for ${state.page.grade} ${state.page.subject}.`
+      : `Showing all ${available.length} standards for ${state.page.grade} ${state.page.subject}.`;
+  }
+
+  const html = filtered
     .map((standard) => {
       const active = state.selectedStandardCodes.includes(standard.code);
       return `
@@ -494,6 +514,18 @@ function renderStandards() {
     els.standardsMenuLabel.textContent = `Select Kentucky standards (${count} selected)`;
   }
   renderSelectedSummaries();
+}
+
+function handleStandardsSelectChange() {
+  if (!requireTeacherAccess()) return;
+  const selectedInDropdown = Array.from(els.standardsSelect.selectedOptions).map((option) => option.value);
+  const visibleCodes = filteredStandards().map((standard) => standard.code);
+  const hiddenSelected = state.selectedStandardCodes.filter((code) => !visibleCodes.includes(code));
+  state.selectedStandardCodes = unique([...hiddenSelected, ...selectedInDropdown]);
+  invalidateSelectedDrafts();
+  persist();
+  renderStandards();
+  renderDraftPreview();
 }
 
 function renderApprovals() {
@@ -542,11 +574,14 @@ function approveTeacher(email) {
 
 function filteredStandards() {
   const term = els.standardSearch ? els.standardSearch.value.trim().toLowerCase() : "";
-  return standards.filter((standard) => {
-    const matchesPage = standard.subject === state.page.subject && standard.grade === state.page.grade;
+  return standardsForActiveClass().filter((standard) => {
     const searchable = `${standard.code} ${standard.text} ${standard.subject} ${standard.grade}`.toLowerCase();
-    return matchesPage && (!term || searchable.includes(term));
+    return !term || searchable.includes(term);
   });
+}
+
+function standardsForActiveClass() {
+  return standards.filter((standard) => standard.subject === state.page.subject && standard.grade === state.page.grade);
 }
 
 function toggleStandard(code, checked) {
