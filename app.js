@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function cacheElements() {
   [
     "emailInput", "passwordField", "passwordInput", "signInButton", "signOutButton", "signinMessage", "activeUser", "activeRole", "todayPill", "pageTitle",
-    "pageForm", "classSelect", "classList", "newClassButton", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsSelect", "standardsCount", "standardsList", "standardsMenuLabel", "classesMessage",
+    "pageForm", "classSelect", "classList", "newClassButton", "pageName", "joinCode", "subjectSelect", "gradeSelect", "hubSubjectSelect", "hubGradeSelect", "standardSearch", "standardsSelect", "standardsCount", "standardsList", "standardsMenuLabel", "classesMessage",
     "approvalList",
     "ringerForm", "dateStart", "dateEnd", "selectRangeButton", "dokSelect", "questionType", "teacherPrompt", "applyToAllButton", "dateSetupList", "questionText", "generateButton",
     "teacherMessage", "prevMonthButton", "nextMonthButton", "calendarMonthLabel", "teacherCalendar",
@@ -206,6 +206,8 @@ function bindEvents() {
   if (els.signOutButton) els.signOutButton.addEventListener("click", signOut);
   if (els.classSelect) els.classSelect.addEventListener("change", () => switchClass(els.classSelect.value));
   if (els.newClassButton) els.newClassButton.addEventListener("click", createNewClass);
+  if (els.hubSubjectSelect) els.hubSubjectSelect.addEventListener("change", handleHubSubjectChange);
+  if (els.hubGradeSelect) els.hubGradeSelect.addEventListener("change", handleHubGradeChange);
   els.standardSearch.addEventListener("input", renderStandards);
   if (els.standardsSelect) els.standardsSelect.addEventListener("change", handleStandardsSelectChange);
   els.studentDate.addEventListener("change", renderStudentAssignment);
@@ -265,10 +267,14 @@ function populateSelects() {
   const grades = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
     .filter((grade) => standards.some((item) => item.grade === grade));
 
-  els.subjectSelect.innerHTML = subjects.map((subject) => `<option>${subject}</option>`).join("");
+  els.subjectSelect.innerHTML = subjects.map((subject) => `<option value="${escapeHtml(subject)}">${escapeHtml(subjectLabel(subject))}</option>`).join("");
   els.gradeSelect.innerHTML = grades.map((grade) => `<option>${grade}</option>`).join("");
+  if (els.hubSubjectSelect) els.hubSubjectSelect.innerHTML = subjects.map((subject) => `<option value="${escapeHtml(subject)}">${escapeHtml(subjectLabel(subject))}</option>`).join("");
+  if (els.hubGradeSelect) els.hubGradeSelect.innerHTML = grades.map((grade) => `<option>${grade}</option>`).join("");
   els.subjectSelect.value = state.page.subject;
   els.gradeSelect.value = state.page.grade;
+  if (els.hubSubjectSelect) els.hubSubjectSelect.value = state.page.subject;
+  if (els.hubGradeSelect) els.hubGradeSelect.value = state.page.grade;
 }
 
 function renderAll() {
@@ -291,6 +297,8 @@ function renderAll() {
   els.joinCode.value = state.page.code;
   els.subjectSelect.value = state.page.subject;
   els.gradeSelect.value = state.page.grade;
+  if (els.hubSubjectSelect) els.hubSubjectSelect.value = state.page.subject;
+  if (els.hubGradeSelect) els.hubGradeSelect.value = state.page.grade;
   els.studentDate.max = isoToday;
   els.gradebookDate.max = isoToday;
   els.dateStart.value = state.selectedDates[0] || isoToday;
@@ -470,6 +478,36 @@ function createNewClass() {
   els.pageName.select();
 }
 
+function handleHubSubjectChange() {
+  if (!requireTeacherAccess()) return;
+  state.page.subject = els.hubSubjectSelect.value;
+  if (els.subjectSelect) els.subjectSelect.value = state.page.subject;
+  resetDateStandardsForClass();
+  saveActiveClassRecord();
+  invalidateSelectedDrafts();
+  persist();
+  renderClassSelect();
+  renderClassList();
+  renderStandards();
+  renderDateSetupList();
+  renderDraftPreview();
+}
+
+function handleHubGradeChange() {
+  if (!requireTeacherAccess()) return;
+  state.page.grade = els.hubGradeSelect.value;
+  if (els.gradeSelect) els.gradeSelect.value = state.page.grade;
+  resetDateStandardsForClass();
+  saveActiveClassRecord();
+  invalidateSelectedDrafts();
+  persist();
+  renderClassSelect();
+  renderClassList();
+  renderStandards();
+  renderDateSetupList();
+  renderDraftPreview();
+}
+
 function renderStandards() {
   const filtered = filteredStandards();
   const available = standardsForActiveClass();
@@ -485,9 +523,10 @@ function renderStandards() {
   }
   if (els.standardsCount) {
     const term = els.standardSearch ? els.standardSearch.value.trim() : "";
+    const topicLabel = subjectLabel(state.page.subject);
     els.standardsCount.textContent = term
-      ? `Showing ${filtered.length} of ${available.length} standards for ${state.page.grade} ${state.page.subject}.`
-      : `Showing all ${available.length} standards for ${state.page.grade} ${state.page.subject}.`;
+      ? `Showing ${filtered.length} of ${available.length} ${topicLabel} standards for Grade ${state.page.grade}.`
+      : `Showing all ${available.length} ${topicLabel} standards for Grade ${state.page.grade}.`;
   }
 
   const html = filtered
@@ -582,6 +621,13 @@ function filteredStandards() {
 
 function standardsForActiveClass() {
   return standards.filter((standard) => standard.subject === state.page.subject && standard.grade === state.page.grade);
+}
+
+function subjectLabel(subject) {
+  return {
+    "English Language Arts": "ELA",
+    "Mathematics": "Math"
+  }[subject] || subject;
 }
 
 function toggleStandard(code, checked) {
