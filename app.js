@@ -65,7 +65,7 @@ const fallbackStandards = [
   ["KY.SS.8.C.CP.2", "Social Studies", "8", "Analyze how the Constitution and civic principles affect rights and responsibilities."]
 ].map(([code, subject, grade, text]) => ({ code, subject, grade, text }));
 
-const standards = Array.isArray(window.BELLRINGER_STANDARDS) && window.BELLRINGER_STANDARDS.length
+let standards = Array.isArray(window.BELLRINGER_STANDARDS) && window.BELLRINGER_STANDARDS.length
   ? window.BELLRINGER_STANDARDS
   : fallbackStandards;
 
@@ -80,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
   populateSelects();
   renderAll();
   setView(state.role === "teacher" && state.teacherAuthenticated ? "teacher" : "student");
+  loadStandardsJsonBackup();
 });
 
 function cacheElements() {
@@ -95,6 +96,32 @@ function cacheElements() {
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
+}
+
+async function loadStandardsJsonBackup() {
+  if (standards.length > 100 || typeof fetch !== "function") return;
+
+  try {
+    const response = await fetch("standards.json?v=20260628c", { cache: "no-store" });
+    if (!response.ok) return;
+    const imported = await response.json();
+    if (!Array.isArray(imported) || imported.length <= standards.length) return;
+
+    standards = imported
+      .filter((item) => item && item.code && item.subject && item.grade && item.text)
+      .map((item) => ({
+        code: String(item.code),
+        subject: String(item.subject),
+        grade: String(item.grade),
+        text: String(item.text)
+      }));
+
+    state.selectedStandardCodes = state.selectedStandardCodes.filter((code) => standards.some((item) => item.code === code));
+    populateSelects();
+    renderAll();
+  } catch (error) {
+    console.warn("Could not load standards.json", error);
+  }
 }
 
 function hydrate() {
@@ -158,7 +185,10 @@ function seedInitialData() {
   const ringers = activeRingers();
 
   if (!ringers[isoToday]) {
-    const standard = standards.find((item) => item.code === "KY.6.RI.2");
+    const standard = standards.find((item) => item.code === "KY.6.RI.2")
+      || standards.find((item) => item.subject === "English Language Arts" && item.grade === "6")
+      || fallbackStandards.find((item) => item.subject === "English Language Arts" && item.grade === "6")
+      || standards[0];
     ringers[isoToday] = buildRinger(isoToday, [standard], "2", "KSA-style reading response", ksaPrompt({
       date: isoToday,
       subject: "English Language Arts",
@@ -171,7 +201,10 @@ function seedInitialData() {
 
   const previous = previousSchoolDay(isoToday);
   if (!ringers[previous]) {
-    const standard = standards.find((item) => item.code === "KY.6.NS.1");
+    const standard = standards.find((item) => item.code === "KY.6.NS.1")
+      || standards.find((item) => item.subject === "Mathematics" && item.grade === "6")
+      || fallbackStandards.find((item) => item.subject === "Mathematics" && item.grade === "6")
+      || standards[0];
     ringers[previous] = buildRinger(previous, [standard], "2", "KSA-style math problem", ksaPrompt({
       date: previous,
       subject: "Mathematics",
