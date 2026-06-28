@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BellRinger</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260623e">
   </head>
   <body>
     <div class="app-shell">
@@ -37,6 +37,7 @@
 
         <nav class="nav-tabs" aria-label="Main sections">
           <button class="nav-tab is-active" data-view="teacher">Teacher Studio</button>
+          <button class="nav-tab" data-view="classes">Classes</button>
           <button class="nav-tab" data-view="student">Student Bell</button>
           <button class="nav-tab" data-view="gradebook">Gradebook</button>
         </nav>
@@ -60,29 +61,6 @@
 
         <section id="teacherView" class="view-panel is-visible" aria-labelledby="teacher-heading">
           <div class="workspace-grid">
-            <form id="pageForm" class="panel compact-panel">
-              <h3>Class details</h3>
-              <label>
-                Page name
-                <input id="pageName" type="text" value="6th Grade ELA - Homeroom">
-              </label>
-              <label>
-                Join code
-                <input id="joinCode" type="text" value="HART-ELA6">
-              </label>
-              <button class="secondary-button" type="submit">Save class details</button>
-            </form>
-
-            <section class="panel approval-panel">
-              <div class="panel-heading">
-                <div>
-                  <h3>Teacher approvals</h3>
-                  <p>New teacher accounts require your approval.</p>
-                </div>
-              </div>
-              <div id="approvalList" class="approval-list"></div>
-            </section>
-
             <form id="ringerForm" class="panel ringer-builder">
               <div class="panel-heading">
                 <div>
@@ -94,7 +72,7 @@
                     Active class
                     <select id="classSelect"></select>
                   </label>
-                  <button id="newClassButton" class="secondary-button" type="button">Create class</button>
+                  <button class="secondary-button" data-view="classes" type="button">Manage classes</button>
                 </div>
               </div>
 
@@ -146,17 +124,6 @@
                   </div>
                 </div>
 
-                <div class="builder-row">
-                  <label>
-                    Teaching subject
-                    <select id="subjectSelect"></select>
-                  </label>
-                  <label>
-                    Grade
-                    <select id="gradeSelect"></select>
-                  </label>
-                </div>
-
                 <label>
                   Topic or idea
                   <textarea id="teacherPrompt" rows="4" placeholder="Example: Compare theme and central idea using a short passage about teamwork."></textarea>
@@ -190,7 +157,7 @@
                 </div>
 
                 <details class="standards-menu" open>
-                  <summary>Choose Kentucky standards</summary>
+                  <summary id="standardsMenuLabel">Select Kentucky standards (0 selected)</summary>
                   <div class="standards-menu-content">
                     <input id="standardSearch" class="search-input" type="search" placeholder="Search standards">
                     <div id="standardsList" class="standards-list" aria-live="polite"></div>
@@ -227,6 +194,55 @@
               </div>
               <p id="teacherMessage" class="form-note" aria-live="polite"></p>
             </form>
+          </div>
+        </section>
+
+        <section id="classesView" class="view-panel" aria-labelledby="classes-heading">
+          <div class="class-management-layout">
+            <section class="panel class-list-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3 id="classes-heading">Your classes</h3>
+                  <p>Select a class to edit or create a new one.</p>
+                </div>
+                <button id="newClassButton" class="primary-button" type="button">Create new class</button>
+              </div>
+              <div id="classList" class="class-list"></div>
+            </section>
+
+            <form id="pageForm" class="panel compact-panel">
+              <h3>Class setup</h3>
+              <label>
+                Class name
+                <input id="pageName" type="text" value="6th Grade ELA - Homeroom">
+              </label>
+              <div class="builder-row">
+                <label>
+                  Teaching subject
+                  <select id="subjectSelect"></select>
+                </label>
+                <label>
+                  Grade
+                  <select id="gradeSelect"></select>
+                </label>
+              </div>
+              <label>
+                Student join code
+                <input id="joinCode" type="text" value="HART-ELA6">
+              </label>
+              <button class="primary-button" type="submit">Save class</button>
+              <p id="classesMessage" class="form-note" aria-live="polite"></p>
+            </form>
+
+            <section class="panel approval-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Teacher approvals</h3>
+                  <p>New teacher accounts require your approval.</p>
+                </div>
+              </div>
+              <div id="approvalList" class="approval-list"></div>
+            </section>
           </div>
         </section>
 
@@ -299,6 +315,7 @@
       </main>
     </div>
 
-    <script src="app.js"></script>
+    <script src="standards-data.js?v=20260623f"></script>
+    <script src="app.js?v=20260623f"></script>
   </body>
 </html>

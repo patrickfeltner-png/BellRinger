@@ -14,7 +14,8 @@ const state = {
   },
   classes: [],
   activeClassId: "",
-  selectedStandardCodes: ["KY.6.RI.2"],
+  selectedStandardCodes: [],
+  standardsPickerVersion: 0,
   selectedDates: [isoToday],
   dateConfigs: {},
   calendarMonth: isoToday.slice(0, 7),
@@ -37,7 +38,7 @@ const teacherCredentials = {
   "teacher@school.edu": "BellRinger2026!"
 };
 
-const standards = [
+const fallbackStandards = [
   ["KY.5.RI.2", "English Language Arts", "5", "Determine two or more main ideas of a text and explain how they are supported by key details."],
   ["KY.5.RL.1", "English Language Arts", "5", "Quote accurately from a text when explaining what the text says explicitly and when drawing inferences."],
   ["KY.5.NF.6", "Mathematics", "5", "Solve real world problems involving multiplication of fractions and mixed numbers."],
@@ -64,6 +65,10 @@ const standards = [
   ["KY.SS.8.C.CP.2", "Social Studies", "8", "Analyze how the Constitution and civic principles affect rights and responsibilities."]
 ].map(([code, subject, grade, text]) => ({ code, subject, grade, text }));
 
+const standards = Array.isArray(window.BELLRINGER_STANDARDS) && window.BELLRINGER_STANDARDS.length
+  ? window.BELLRINGER_STANDARDS
+  : fallbackStandards;
+
 const els = {};
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -80,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function cacheElements() {
   [
     "emailInput", "passwordField", "passwordInput", "signInButton", "signOutButton", "signinMessage", "activeUser", "activeRole", "todayPill", "pageTitle",
-    "pageForm", "classSelect", "newClassButton", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsList",
+    "pageForm", "classSelect", "classList", "newClassButton", "pageName", "joinCode", "subjectSelect", "gradeSelect", "standardSearch", "standardsList", "standardsMenuLabel", "classesMessage",
     "approvalList",
     "ringerForm", "dateStart", "dateEnd", "selectRangeButton", "dokSelect", "questionType", "teacherPrompt", "applyToAllButton", "dateSetupList", "questionText", "generateButton",
     "teacherMessage", "prevMonthButton", "nextMonthButton", "calendarMonthLabel", "teacherCalendar",
@@ -104,11 +109,15 @@ function hydrate() {
 }
 
 function migrateState() {
-  if (!Array.isArray(state.selectedStandardCodes)) {
-    state.selectedStandardCodes = state.selectedStandardCode ? [state.selectedStandardCode] : ["KY.6.RI.2"];
-  }
+  if (!Array.isArray(state.selectedStandardCodes)) state.selectedStandardCodes = [];
   state.selectedStandardCodes = state.selectedStandardCodes.filter((code) => standards.some((item) => item.code === code));
-  if (!state.selectedStandardCodes.length) state.selectedStandardCodes = [defaultStandard().code];
+  if (state.standardsPickerVersion !== 4) {
+    state.selectedStandardCodes = [];
+    Object.values(state.dateConfigs || {}).forEach((config) => {
+      config.standardCodes = [];
+    });
+    state.standardsPickerVersion = 4;
+  }
   if (!Array.isArray(state.selectedDates) || !state.selectedDates.length) state.selectedDates = [isoToday];
   state.selectedDates = unique(state.selectedDates).filter((date) => isSchoolDay(date)).sort();
   if (!state.selectedDates.length) state.selectedDates = [isoToday];
@@ -119,7 +128,7 @@ function migrateState() {
   delete state.approvedStudents;
   delete state.pendingApprovals;
   state.calendarMonth = actualISODate.slice(0, 7);
-  if (!["5", "6", "7", "8"].includes(state.page.grade)) state.page.grade = "6";
+  if (!standards.some((item) => item.grade === state.page.grade)) state.page.grade = "6";
   if (!Array.isArray(state.classes) || !state.classes.length) {
     const firstClass = { id: "class-default", ...state.page };
     state.classes = [firstClass];
@@ -224,7 +233,7 @@ function bindEvents() {
     state.page.grade = els.gradeSelect.value;
     saveActiveClassRecord();
     resetDateStandardsForClass();
-    setMessage(els.teacherMessage, "Class page saved.", "teacher-ok");
+    setMessage(els.classesMessage, "Class saved. It is ready to use in Teacher Studio.", "teacher-ok");
     persist();
     renderAll();
   });
@@ -252,7 +261,8 @@ function bindEvents() {
 
 function populateSelects() {
   const subjects = unique(standards.map((item) => item.subject));
-  const grades = ["5", "6", "7", "8"];
+  const grades = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+    .filter((grade) => standards.some((item) => item.grade === grade));
 
   els.subjectSelect.innerHTML = subjects.map((subject) => `<option>${subject}</option>`).join("");
   els.gradeSelect.innerHTML = grades.map((grade) => `<option>${grade}</option>`).join("");
@@ -275,6 +285,7 @@ function renderAll() {
   if (els.signOutButton) els.signOutButton.hidden = !state.email;
   els.passwordField.hidden = state.role !== "teacher";
   renderClassSelect();
+  renderClassList();
   els.pageName.value = state.page.name;
   els.joinCode.value = state.page.code;
   els.subjectSelect.value = state.page.subject;
@@ -310,6 +321,7 @@ function setView(viewName) {
   document.getElementById(`${viewName}View`).classList.add("is-visible");
   els.pageTitle.textContent = {
     teacher: "Teacher Studio",
+    classes: "Classes",
     student: "Student Bell",
     gradebook: "Gradebook"
   }[viewName];
@@ -376,9 +388,22 @@ function activeRingers() {
 function renderClassSelect() {
   if (!els.classSelect) return;
   els.classSelect.innerHTML = state.classes
-    .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
+    .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} — Grade ${escapeHtml(item.grade)} ${escapeHtml(item.subject)}</option>`)
     .join("");
   els.classSelect.value = state.activeClassId;
+}
+
+function renderClassList() {
+  if (!els.classList) return;
+  els.classList.innerHTML = state.classes.map((item) => `
+    <button class="class-list-item ${item.id === state.activeClassId ? "is-active" : ""}" type="button" data-class-id="${escapeHtml(item.id)}">
+      <strong>${escapeHtml(item.name)}</strong>
+      <span>${escapeHtml(item.subject)} · Grade ${escapeHtml(item.grade)} · ${escapeHtml(item.code)}</span>
+    </button>
+  `).join("");
+  els.classList.querySelectorAll("[data-class-id]").forEach((button) => {
+    button.addEventListener("click", () => switchClass(button.dataset.classId));
+  });
 }
 
 function saveActiveClassRecord() {
@@ -393,10 +418,7 @@ function saveActiveClassRecord() {
 }
 
 function resetPlannerForClass() {
-  const firstStandard = standards.find((item) => item.subject === state.page.subject && item.grade === state.page.grade)
-    || standards.find((item) => item.grade === state.page.grade)
-    || standards[0];
-  state.selectedStandardCodes = [firstStandard.code];
+  state.selectedStandardCodes = [];
   state.selectedDates = [isoToday];
   state.dateConfigs = {};
   state.generatedDrafts = {};
@@ -441,7 +463,8 @@ function createNewClass() {
   resetPlannerForClass();
   persist();
   renderAll();
-  setMessage(els.teacherMessage, "New class created. Give it a name, then click Save class page.", "teacher-ok");
+  setView("classes");
+  setMessage(els.classesMessage, "New class created. Add its name, subject, and grade, then click Save class.", "teacher-ok");
   els.pageName.focus();
   els.pageName.select();
 }
@@ -449,22 +472,27 @@ function createNewClass() {
 function renderStandards() {
   const html = filteredStandards()
     .map((standard) => {
-      const active = state.selectedStandardCodes.includes(standard.code) ? " is-selected" : "";
-      const label = active ? "Selected" : "Select";
+      const active = state.selectedStandardCodes.includes(standard.code);
       return `
-        <article class="standard-card${active}">
-          <div class="standard-code">${standard.code}</div>
-          <p>${standard.text}</p>
-          <button type="button" data-standard="${standard.code}">${label}</button>
-        </article>
+        <label class="standard-option ${active ? "is-selected" : ""}">
+          <input type="checkbox" data-standard="${standard.code}" ${active ? "checked" : ""}>
+          <span>
+            <strong>${standard.code}</strong>
+            <small>${standard.text}</small>
+          </span>
+        </label>
       `;
     })
     .join("");
 
-  els.standardsList.innerHTML = html || "<p>No standards match this filter.</p>";
-  els.standardsList.querySelectorAll("[data-standard]").forEach((button) => {
-    button.addEventListener("click", () => toggleStandard(button.dataset.standard));
+  els.standardsList.innerHTML = html || "<p>No standards match this search for the active class.</p>";
+  els.standardsList.querySelectorAll("[data-standard]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => toggleStandard(checkbox.dataset.standard, checkbox.checked));
   });
+  if (els.standardsMenuLabel) {
+    const count = state.selectedStandardCodes.length;
+    els.standardsMenuLabel.textContent = `Select Kentucky standards (${count} selected)`;
+  }
   renderSelectedSummaries();
 }
 
@@ -521,17 +549,13 @@ function filteredStandards() {
   });
 }
 
-function toggleStandard(code) {
+function toggleStandard(code, checked) {
   if (!requireTeacherAccess()) return;
 
-  if (state.selectedStandardCodes.includes(code)) {
-    if (state.selectedStandardCodes.length === 1) {
-      setMessage(els.teacherMessage, "Keep at least one standard selected.", "teacher-error");
-      return;
-    }
-    state.selectedStandardCodes = state.selectedStandardCodes.filter((item) => item !== code);
-  } else {
+  if (checked && !state.selectedStandardCodes.includes(code)) {
     state.selectedStandardCodes.push(code);
+  } else if (!checked) {
+    state.selectedStandardCodes = state.selectedStandardCodes.filter((item) => item !== code);
   }
 
   invalidateSelectedDrafts();
@@ -626,7 +650,7 @@ function renderSelectedSummaries() {
   els.dateEnd.value = state.selectedDates[state.selectedDates.length - 1] || isoToday;
   els.selectedStandardsList.innerHTML = selectedStandards.map((standard) => `
     <span class="selection-chip">${standard.code}</span>
-  `).join("");
+  `).join("") || `<span class="empty-note">No standards selected yet.</span>`;
 
   els.selectedDatesList.innerHTML = state.selectedDates.map((date) => `
     <span class="selection-chip">${formatShortDate(date)}</span>
@@ -634,10 +658,7 @@ function renderSelectedSummaries() {
 }
 
 function resetDateStandardsForClass() {
-  const first = standards.find((standard) => {
-    return standard.subject === state.page.subject && standard.grade === state.page.grade;
-  });
-  state.selectedStandardCodes = first ? [first.code] : [];
+  state.selectedStandardCodes = [];
   state.selectedDates.forEach((date) => {
     if (!state.dateConfigs[date]) return;
     state.dateConfigs[date].standardCodes = [...state.selectedStandardCodes];
